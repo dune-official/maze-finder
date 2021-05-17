@@ -168,7 +168,7 @@ class Maze:
 
         return o
 
-    # functions relating to the A* algorithm
+    # functions related to the A* algorithm
     def get_cost(self, coord1_, coord2_):
         """Cost function that encourages walking towards the Exit, penalizes walking away from it
         and penalizes (somehow) 'dilly-dally' (walking parallel to the Exit)"""
@@ -239,7 +239,7 @@ class Maze:
             # relations of all the coordinates that are not in the path
             relations_of_checking = list(set(self.relations[checking]).difference(path_))
             if not relations_of_checking:
-                # if the program is in a dead end, return to the last successful comparison
+                # if the program lands in a dead end, it return to the last successful comparison
                 checking = node_connections
                 break
 
