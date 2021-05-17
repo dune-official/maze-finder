@@ -264,11 +264,14 @@ class Maze:
         return path_
 
 
+# for all python noobs: 
+# this means that the following if section will only get executed when its not imported into another file
 if __name__ == '__main__':
     maze = Maze('maze.txt')
-    # print(maze)
     pa = maze.get_path()
-    # print(pa)
+    
+    # make the path visible
+    # keep in mind this also replaces the S and the E
     for co in pa:
         maze[co] = '.'
 
