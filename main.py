@@ -124,7 +124,6 @@ class Maze:
 
         x_pair = (x - 1, x + 1)
         y_pair = (y - 1, y + 1)
-        o = {}
 
         if not x:
             # we omit to look up because x is zero
@@ -160,7 +159,7 @@ class Maze:
                 "E": self[x, y_pair[1]] == 'E'
             } if omit != 'right' else None,
             "left": {
-                "coordinate": (x, y_pair[0] if y_pair[0] >= 0 else self.width - 1),
+                "coordinate": (x, y_pair[0]),
                 "free": self[x, y_pair[0]] == ' ',
                 "wall": self[x, y_pair[0]] == '#',
                 "S": self[x, y_pair[0]] == 'S',
@@ -179,58 +178,29 @@ class Maze:
 
         return o
 
-    def look_around_old(self, coordinate_: tuple) -> dict:
-        """OLD DO NOT USE"""
-        x, y = coordinate_
+    def is_closed(self) -> bool:
+        """The closed function checks if the maze is even solvable or not"""
 
-        if x == self.height - 1:
-            x_pair = (x - 1, 0)  # wrap around the maze so it doesn't raise an index error
-        else:
-            x_pair = (x - 1, x + 1)  # north, south
+        e_ = self.find('E')[0]
+        s_ = self.find('S')[0]
+        checking = [e_]
+        covered = []
 
-        if y == self.width - 1:
-            y_pair = (y - 1, 0)
-        else:
-            y_pair = (y - 1, y + 1)
+        while checking:
+            # checking is the queue for all the nodes that need to be checked
+            # it gets smaller when it iterates over an exhausted node, otherwise it gets bigger
+            # the goal of this algorithm is to exhaust all nodes until the queue is empty
+            # if the start position is in the covered section, the maze is solvable
+            for element in checking:
+                around_ = list(set(self.relations[element]).difference(covered))
+                covered.append(element)
+                if not len(around_):
+                    del checking[checking.index(element)]
+                    continue
+                for relation in around_:
+                    checking.append(relation)
 
-        o = {
-            "up": {
-                "coordinate": (x_pair[0] if x_pair[0] >= 0 else self.height - 1, y),
-                "free": self[x_pair[0], y] == ' ',
-                "wall": self[x_pair[0], y] == '#',
-                "S": self[x_pair[0], y] == 'S',
-                "E": self[x_pair[0], y] == 'E'
-            },
-            "down": {
-                "coordinate": (x_pair[1], y),
-                "free": self[x_pair[1], y] == ' ',
-                "wall": self[x_pair[1], y] == '#',
-                "S": self[x_pair[1], y] == 'S',
-                "E": self[x_pair[1], y] == 'E'
-            },
-            "right": {
-                "coordinate": (x, y_pair[1]),
-                "free": self[x, y_pair[1]] == ' ',
-                "wall": self[x, y_pair[1]] == '#',
-                "S": self[x, y_pair[1]] == 'S',
-                "E": self[x, y_pair[1]] == 'E'
-            },
-            "left": {
-                "coordinate": (x, y_pair[0] if y_pair[0] >= 0 else self.width - 1),
-                "free": self[x, y_pair[0]] == ' ',
-                "wall": self[x, y_pair[0]] == '#',
-                "S": self[x, y_pair[0]] == 'S',
-                "E": self[x, y_pair[0]] == 'E'
-            }
-        }
-
-        free_spaces = len([x for x in o if o[x]['free']])
-        walls = len([x for x in o if o[x]['wall']])
-        s = len([x for x in o if o[x]['S']])
-        e = len([x for x in o if o[x]['E']])
-        o.update({"free_spaces": free_spaces, "walls": walls, "s_count": s, "e_count": e})
-
-        return o
+        return s_ not in covered
 
     def fill(self, coordinates_: list, filler: str = '.'):
         """Creates another maze and fills it with the input"""
@@ -296,6 +266,10 @@ class Maze:
 
     def get_path(self):
         """According to the A* algorithm"""
+        # before the algorithm starts, the maze gets validated
+        if self.is_closed():
+            raise BlockingIOError('The maze is not solvable')
+
         # we start with s
         checking = self.find('S')[0]
         covered = [checking]
@@ -337,13 +311,8 @@ class Maze:
                 # represents all nodes and its costs
                 adjacent_node_costs[relation] = current_cost
 
-                # if current_distance < last_distance:
-                #     # becomes important if the detour is cheaper (because of the heuristics) than the direct way
-                #     self.distances[checking] = current_distance
-
             # the cheapest node gets chosen
             cheapest_node = min(adjacent_node_costs, key=lambda x: adjacent_node_costs[x])
-            print(cheapest_node, adjacent_node_costs)
             covered.append(cheapest_node)
             adjacent_node_costs = {}
 
