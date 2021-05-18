@@ -3,7 +3,7 @@ def manhattan(coordinate1: tuple, coordinate2: tuple) -> int:
     if coordinate1 is not None and coordinate2 is not None:
         x1, y1 = coordinate1
         x2, y2 = coordinate2
-        return abs(x1-x2) + abs(y1-y2)
+        return abs(x1 - x2) + abs(y1 - y2)
     return 0
 
 
@@ -43,7 +43,8 @@ class Infinite:
 class Maze:
 
     def __init__(self, filepath):
-        self.content = open(filepath, 'r').read().splitlines()
+        self.filepath = filepath
+        self.content = open(self.filepath, 'r').read().splitlines()
         self.width = len(max(self.content, key=len))  # the length of the widest element inside the maze
         self.height = len(self.content)
 
@@ -93,7 +94,8 @@ class Maze:
             for y, element in enumerate(row):
                 if element == to_find:
                     found.append((x, y))
-
+        if not found:
+            raise FileNotFoundError(f'{to_find} not found')
         return found
 
     def get_relations(self):
@@ -117,6 +119,68 @@ class Maze:
 
     def look_around(self, coordinate_: tuple) -> dict:
         """This function checks the direct surroundings of one coordinate/node"""
+        x, y = coordinate_
+        omit = None
+
+        x_pair = (x - 1, x + 1)
+        y_pair = (y - 1, y + 1)
+        o = {}
+
+        if not x:
+            # we omit to look up because x is zero
+            omit = 'up'
+        elif x == self.height-1:
+            omit = 'down'
+
+        if not y:
+            omit = 'left'
+        elif y == self.width-1:
+            omit = 'right'
+
+        o = {
+            "up": {
+                "coordinate": (x_pair[0], y),
+                "free": self[x_pair[0], y] == ' ',
+                "wall": self[x_pair[0], y] == '#',
+                "S": self[x_pair[0], y] == 'S',
+                "E": self[x_pair[0], y] == 'E'
+            } if omit != 'up' else None,
+            "down": {
+                "coordinate": (x_pair[1], y),
+                "free": self[x_pair[1], y] == ' ',
+                "wall": self[x_pair[1], y] == '#',
+                "S": self[x_pair[1], y] == 'S',
+                "E": self[x_pair[1], y] == 'E'
+            } if omit != 'down' else None,
+            "right": {
+                "coordinate": (x, y_pair[1]),
+                "free": self[x, y_pair[1]] == ' ',
+                "wall": self[x, y_pair[1]] == '#',
+                "S": self[x, y_pair[1]] == 'S',
+                "E": self[x, y_pair[1]] == 'E'
+            } if omit != 'right' else None,
+            "left": {
+                "coordinate": (x, y_pair[0] if y_pair[0] >= 0 else self.width - 1),
+                "free": self[x, y_pair[0]] == ' ',
+                "wall": self[x, y_pair[0]] == '#',
+                "S": self[x, y_pair[0]] == 'S',
+                "E": self[x, y_pair[0]] == 'E'
+            } if omit != 'left' else None
+        }
+
+        if omit is not None:
+            del o[omit]
+
+        free_spaces = len([x for x in o if o[x]['free']])
+        walls = len([x for x in o if o[x]['wall']])
+        s = len([x for x in o if o[x]['S']])
+        e = len([x for x in o if o[x]['E']])
+        o.update({"free_spaces": free_spaces, "walls": walls, "s_count": s, "e_count": e})
+
+        return o
+
+    def look_around_old(self, coordinate_: tuple) -> dict:
+        """OLD DO NOT USE"""
         x, y = coordinate_
 
         if x == self.height - 1:
@@ -168,7 +232,14 @@ class Maze:
 
         return o
 
-    # functions related to the A* algorithm
+    def fill(self, coordinates_: list, filler: str = '.'):
+        """Creates another maze and fills it with the input"""
+        duplicate = Maze(self.filepath)
+        for coord_ in coordinates_:
+            duplicate[coord_] = filler
+        return duplicate
+
+    # functions relating to the A* algorithm
     def get_cost(self, coord1_, coord2_):
         """Cost function that encourages walking towards the Exit, penalizes walking away from it
         and penalizes (somehow) 'dilly-dally' (walking parallel to the Exit)"""
@@ -227,9 +298,12 @@ class Maze:
         """According to the A* algorithm"""
         # we start with s
         checking = self.find('S')[0]
-        path_ = [checking]
+        covered = [checking]
 
-        node_connections = None
+        # stores only the nodes with at least two connecting nodes for a traceback
+        successful_connections = []
+
+        # stores all adjacent nodes with their relative cost
         adjacent_node_costs = {}
 
         e_ = self.find('E')[0]
@@ -237,11 +311,22 @@ class Maze:
         while checking != e_:
 
             # relations of all the coordinates that are not in the path
-            relations_of_checking = list(set(self.relations[checking]).difference(path_))
+            relations_of_checking = list(set(self.relations[checking]).difference(covered))
             if not relations_of_checking:
-                # if the program lands in a dead end, it return to the last successful comparison
-                checking = node_connections
-                break
+                # checking is now the last 'successful' node
+                # the code goes back and since the way is already covered it can't go there again
+                try:
+                    checking = successful_connections[-1]
+                    del successful_connections[-1]
+                    continue
+                except IndexError:
+                    print('E can not be reached, the maze is therefore invalid')
+                    return checking
+
+            else:
+                # this means that the node has at least one connection (meaning it is 'successful')
+                # and could lead to the exit, until it is exhausted
+                successful_connections.append(checking)
 
             for relation in relations_of_checking:
                 # get the distance from the start to the current node plus the heuristic
@@ -252,27 +337,26 @@ class Maze:
                 # represents all nodes and its costs
                 adjacent_node_costs[relation] = current_cost
 
+                # if current_distance < last_distance:
+                #     # becomes important if the detour is cheaper (because of the heuristics) than the direct way
+                #     self.distances[checking] = current_distance
+
             # the cheapest node gets chosen
             cheapest_node = min(adjacent_node_costs, key=lambda x: adjacent_node_costs[x])
-            path_.append(cheapest_node)
+            print(cheapest_node, adjacent_node_costs)
+            covered.append(cheapest_node)
             adjacent_node_costs = {}
 
             # the node connections is the last successful node (one that is not a dead end)
-            node_connections = checking
             checking = cheapest_node
 
-        return path_
+        return successful_connections + [e_]
 
 
-# for all python noobs: 
-# this means that the following if section will only get executed when its not imported into another file
 if __name__ == '__main__':
-    maze = Maze('maze.txt')
-    pa = maze.get_path()
-    
-    # make the path visible
-    # keep in mind this also replaces the S and the E
-    for co in pa:
-        maze[co] = '.'
+    maze = Maze('maze1.txt')
 
-    print(maze)
+    pa = maze.get_path()
+    print(len(pa))
+    maze_filled = maze.fill(pa)
+    print(maze_filled)
