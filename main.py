@@ -351,12 +351,3 @@ class Maze:
             checking = cheapest_node
 
         return successful_connections + [e_]
-
-
-if __name__ == '__main__':
-    maze = Maze('maze1.txt')
-
-    pa = maze.get_path()
-    print(len(pa))
-    maze_filled = maze.fill(pa)
-    print(maze_filled)
