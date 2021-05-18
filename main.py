@@ -274,7 +274,7 @@ class Maze:
         checking = self.find('S')[0]
         covered = [checking]
 
-        # stores only the nodes with at least two connecting nodes for a traceback
+        # stores only the nodes with at least one connecting node for a traceback
         successful_connections = []
 
         # stores all adjacent nodes with their relative cost
