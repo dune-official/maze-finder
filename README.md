@@ -1,5 +1,5 @@
 # maze-finder
-## My very own algorithm specified on 2D mazes 
+## My very own algorithm specified on solving 2D mazes 
 
 Okay, consider this: you are held at gunpoint and need to find the shortest path of a 2d maze. Well, worry no more, because I got you.
 
