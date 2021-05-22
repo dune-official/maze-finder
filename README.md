@@ -35,6 +35,6 @@ Maybe you can draw some inspiration from my code about the A* algorithm I used t
 
 - Algorithm used: A* (my heuristic is the manhattan distance from the point to the end point 'E')
 - Language used: python
-- Bugs left: probably some (maybe not put the 'S' across the 'E' yet, yes, I know where the bug lies but I am too lazy to fix it rn)
+- Bugs left: probably some
 
 Please provide feedback or try it with your own maze
